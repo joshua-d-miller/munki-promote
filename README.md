@@ -7,7 +7,9 @@ Requirements
 ------------
 
 **munki**
+
 **python**
+
 **access to your repo**
 
 Setup
