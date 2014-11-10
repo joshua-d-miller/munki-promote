@@ -43,12 +43,14 @@ for dirname, dirnames, filenames in os.walk(MUNKI_REPO):
 							updated_apps.append(list([plist['name'], plist['version'], plist['catalogs']]))
 							plistlib.writePlist(plist, (currentfile))
 						except:
-							print "Could not update pkginfo for " + currentfile
+							print "Could not update pkginfo for %-1s" % (currentfile)
 							continue
 				except:
-					print "Could not read modify time of file " + currentfile
+					print "Could not read modify time of file %-1s" % (currentfile)
+					continue
 		except:
-			print "Could not read plist information from file " + currentfile
+			print "Could not read plist information from file %-1s" % (currentfile)
+			continue
 # Print output of changes made
 if not updated_apps:
 	print "No files were changed...."
