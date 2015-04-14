@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+"""This script will take items in a Munki catalog
+and place them in the the chosen catalog from
+munkipromote.conf.  You can define as many catalogs
+as you would like i.e. testing, production, development """
+# Joshua D. Miller - josh@psu.edu - Apr 14, 2015
+# The Pennsylvania State University - College of Education
+
+import os, subprocess, plistlib, time, sys
+from ConfigParser import SafeConfigParser
+
+# Read Config File
+# Set Configuration Parser
+CONFPARSER = SafeConfigParser({'VERBOSE': 'True'})
+# Determine the path of the script
+SCRIPTPATH = os.path.realpath(os.path.dirname(sys.argv[0]))
+# Set the location of the munkipromote.conf file
+CONFFILE = SCRIPTPATH + '/munkipromote.conf'
+# Attempt to read the config file
+try:
+    CONFPARSER.read(CONFFILE)
+except StandardError as error:
+    print error
+    sys.exit(1)
+# Read Munki Repo location
+MUNKI_REPO = CONFPARSER.get('main', 'REPO')
+# Append /pkgsinfo as we only need to go through these files
+MUNKI_REPO += '/pkgsinfo'
+# Parse Configuration file for different catalogs and
+# their applications to promote.
+for catalog in CONFPARSER.sections():
+    if CONFPARSER.has_option(catalog, 'APPS') \
+    and CONFPARSER.has_option(catalog, 'TIME') \
+    and CONFPARSER.has_option(catalog, 'PROMOTE_FROM'):
+        # Read applications to move to specified catalog
+        MUNKI_APPS = CONFPARSER.get(catalog, 'APPS')
+    	# Read last modified time limit (Days)
+        LAST_MODIFIED = CONFPARSER.get(catalog, 'TIME')
+        # Read the catalog to promote from
+        CURRENT_CATALOG = CONFPARSER.get(catalog, 'PROMOTE_FROM')
+    else:
+        continue
+	# Set applist to auto updated apps list from config
+    applist = MUNKI_APPS
+	# Create list to append updated pkginfo/plist apps
+    updated_apps = []
+	# Check pkginfo and plist files in Munki Repo and change their catalog
+	# based of modification time and catalog selected.
+	# Change the LAST_MODIFIED Variable to the amount of time in seconds
+    LAST_MODIFIED = LAST_MODIFIED * 86400
+    # Begin searching through the pkginfo directory
+    for dirname, dirnames, filenames in os.walk(MUNKI_REPO):
+        for filename in filenames:
+        	# Omit hidden files
+            if filename.startswith("."):
+                continue
+            # Capture Current file
+            currentfile = os.path.join(dirname, filename)
+            # Read PLIST file
+            plist = plistlib.readPlist(currentfile)
+            # Get last modified time of the file
+            modifytime = os.path.getmtime(currentfile)
+            # Get current time of script run
+            now = time.time()
+            # Check if the file has not been modified for time specified in config
+            if CURRENT_CATALOG in plist['catalogs'] and modifytime < now - LAST_MODIFIED:
+                try:
+                    # Update Catalog
+                    plist['catalogs'] = catalog
+                    # Add to list of updated applications
+                    updated_apps.append(list([plist['name'], plist['version']]))
+                    # Write the file
+                    plistlib.writePlist(plist, (currentfile))
+                except StandardError as error:
+                    print "Could not update pkginfo for %-1s" % (currentfile)
+                    print error
+                    continue
+    # Print output of changes made
+    if not updated_apps:
+        print "No items were promoted to the %-1s" % (catalog) + " catalog."
+    else:
+        try:
+            # Update the Munki Catalogs
+            print "Updating catalogs...."
+            # Suppress the output of makecatalogs
+            devnull = open(os.devnull, 'w')
+            subprocess.check_call(["makecatalogs"], stdout=devnull, stderr=devnull)
+        except StandardError as error:
+            print "Could not update the Munki catalogs.  Please run makecatalogs"
+            print error
+        # Print the applications that were updated for each catalog
+        print "The following items were promoted to %-1s" % (catalog) + "..."
+        print "%-20s %-20s" % ("Name", "Version")
+        print "%-20s %-20s" % ("----", "-------")
+        for name, version, in updated_apps:
+            print "%-20s %-20s" % (name, version),
+		
