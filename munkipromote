@@ -40,6 +40,8 @@ for catalog in CONFPARSER.sections():
         CURRENT_CATALOG = CONFPARSER.get(catalog, 'PROMOTE_FROM')
     else:
         continue
+    # Turn Catalog to promote to into an array
+    NEW_CATALOG = [catalog]
 	# Set applist to auto updated apps list from config
     applist = MUNKI_APPS
 	# Create list to append updated pkginfo/plist apps
@@ -66,7 +68,7 @@ for catalog in CONFPARSER.sections():
             if CURRENT_CATALOG in plist['catalogs'] and modifytime < now - LAST_MODIFIED:
                 try:
                     # Update Catalog
-                    plist['catalogs'] = catalog
+                    plist['catalogs'] = NEW_CATALOG
                     # Add to list of updated applications
                     updated_apps.append(list([plist['name'], plist['version']]))
                     # Write the file
@@ -92,6 +94,6 @@ for catalog in CONFPARSER.sections():
         print "The following items were promoted to %-1s" % (catalog) + "..."
         print "%-20s %-20s" % ("Name", "Version")
         print "%-20s %-20s" % ("----", "-------")
-        for name, version, in updated_apps:
-            print "%-20s %-20s" % (name, version),
+        for name, version in updated_apps:
+            print "%-20s %-20s" % (name, version)
 		
