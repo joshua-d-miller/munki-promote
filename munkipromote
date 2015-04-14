@@ -35,7 +35,7 @@ for catalog in CONFPARSER.sections():
         # Read applications to move to specified catalog
         MUNKI_APPS = CONFPARSER.get(catalog, 'APPS')
     	# Read last modified time limit (Days)
-        LAST_MODIFIED = CONFPARSER.get(catalog, 'TIME')
+        LAST_MODIFIED = CONFPARSER.getint(catalog, 'TIME')
         # Read the catalog to promote from
         CURRENT_CATALOG = CONFPARSER.get(catalog, 'PROMOTE_FROM')
     else:
