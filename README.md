@@ -18,16 +18,23 @@ Setup
 Copy the munkipromotetemplate.conf as munkipromote.conf and configure the variables:
 
 [main]
+
 REPO = Your Repo Here (ex. /Volumes/Munki/repo [/pkgsinfo is added automatically])
 
 ['production']    
+
 APPS = ['Enter Apps Names used in Munki Here', 'Another Here']
+
 TIME = Enter your Days here just the name ex... 7
+
 PROMOTE_FROM = ['catalog you are promoting from here']
 
 ['testing']
+
 APPS = ['Enter Apps Names used in Munki Here', 'Another Here']
+
 TIME = Enter your Days here just the name ex... 7
+
 PROMOTE_FROM = ['catalog you are promoting from here']
 
 Jenkins Config
