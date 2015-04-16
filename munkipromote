@@ -42,14 +42,12 @@ for catalog in CONFPARSER.sections():
         continue
     # Turn Catalog to promote to into an array
     NEW_CATALOG = [catalog]
-	# Set applist to auto updated apps list from config
-    applist = MUNKI_APPS
 	# Create list to append updated pkginfo/plist apps
     updated_apps = []
-	# Check pkginfo and plist files in Munki Repo and change their catalog
-	# based of modification time and catalog selected.
 	# Change the LAST_MODIFIED Variable to the amount of time in seconds
     LAST_MODIFIED = LAST_MODIFIED * 86400
+    # Check pkginfo and plist files in Munki Repo and change their catalog
+    # based of modification time and catalog selected.
     # Begin searching through the pkginfo directory
     for dirname, dirnames, filenames in os.walk(MUNKI_REPO):
         for filename in filenames:
@@ -65,7 +63,9 @@ for catalog in CONFPARSER.sections():
             # Get current time of script run
             now = time.time()
             # Check if the file has not been modified for time specified in config
-            if CURRENT_CATALOG in plist['catalogs'] and modifytime < now - LAST_MODIFIED:
+            if CURRENT_CATALOG in plist['catalogs'] \
+            and modifytime < now - LAST_MODIFIED and \
+            plist['name'] in MUNKI_APPS:
                 try:
                     # Update Catalog
                     plist['catalogs'] = NEW_CATALOG
