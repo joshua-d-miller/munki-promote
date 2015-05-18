@@ -6,8 +6,9 @@ as you would like i.e. testing, production, development """
 # Joshua D. Miller - josh@psu.edu - May 18, 2015
 # The Pennsylvania State University - College of Education
 
-import os, subprocess, plistlib, time, sys
+import os, subprocess, plistlib, sys
 from ConfigParser import SafeConfigParser
+from datetime import datetime, timedelta
 
 # Read Config File
 # Set Configuration Parser
@@ -36,17 +37,19 @@ for promotion_group in CONFPARSER.sections():
         # Read applications to move to specified catalog
         MUNKI_APPS = CONFPARSER.get(promotion_group, 'APPS')
     	# Read last modified time limit (Days)
-        LAST_MODIFIED = CONFPARSER.getint(promotion_group, 'TIME')
+        DAYS = CONFPARSER.getint(promotion_group, 'TIME')
         # Read the catalog to promote from
         CURRENT_CATALOG = CONFPARSER.get(promotion_group, 'PROMOTE_FROM')
         # Read the catalog to promote to
-        NEW_CATALOG = CONFPARSER.get(promotion_group, 'PROMOTE_TO')
+        DESIRED_CATALOG = CONFPARSER.get(promotion_group, 'PROMOTE_TO')
     else:
         continue
+    # Turn Catalog to promote to into an array
+    NEW_CATALOG = [DESIRED_CATALOG]
 	# Create list to append updated pkginfo/plist apps
     updated_apps = []
 	# Change the LAST_MODIFIED Variable to the amount of time in seconds
-    LAST_MODIFIED = LAST_MODIFIED * 86400
+    LAST_MODIFIED = DAYS * 86400
     # Check pkginfo and plist files in Munki Repo and change their catalog
     # based of modification time and catalog selected.
     # Begin searching through the pkginfo directory
@@ -60,12 +63,18 @@ for promotion_group in CONFPARSER.sections():
             # Read PLIST file
             plist = plistlib.readPlist(currentfile)
             # Get last modified time of the file
-            modifytime = os.path.getmtime(currentfile)
+            getmtime = os.path.getmtime(currentfile)
+            modifytime = datetime.fromtimestamp(getmtime)
             # Get current time of script run
-            now = time.time()
+            now = datetime.now()
+            # Change time from config into a date time
+            # First Convert the days to a timestamp
+            DAYS_FROM_CONFIG = timedelta(days=DAYS)
+            # Now set the desired file has not been modified for x days
+            DESIRED_LAST_MODIFIED_TIME = now - DAYS_FROM_CONFIG
             # Check if the file has not been modified for time specified in config
             if CURRENT_CATALOG in plist['catalogs'] \
-            and modifytime < now - LAST_MODIFIED and \
+            and modifytime < DESIRED_LAST_MODIFIED_TIME and \
             plist['name'] in MUNKI_APPS:
                 try:
                     # Update Catalog
@@ -80,7 +89,8 @@ for promotion_group in CONFPARSER.sections():
                     continue
     # Print output of changes made
     if not updated_apps:
-        print "No items were promoted to the %-1s" % (NEW_CATALOG) + " catalog."
+        print "No items were promoted to the %-1s" % (DESIRED_CATALOG) \
+        + " catalog from the %-1s" % promotion_group + " group..."
     else:
         try:
             # Update the Munki Catalogs
@@ -92,7 +102,8 @@ for promotion_group in CONFPARSER.sections():
             print "Could not update the Munki catalogs.  Please run makecatalogs"
             print error
         # Print the applications that were updated for each catalog
-        print "The following items were promoted to %-1s" % (NEW_CATALOG) + "..."
+        print "The following items were promoted to %-1s" % (DESIRED_CATALOG) \
+        + " from the %-1s" % promotion_group + " group..."
         print "%-20s %-20s" % ("Name", "Version")
         print "%-20s %-20s" % ("----", "-------")
         for name, version in updated_apps:

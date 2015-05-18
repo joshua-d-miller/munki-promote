@@ -27,9 +27,9 @@ APPS = ['Enter Apps Names used in Munki Here', 'Another Here']
 
 TIME = Enter your Days here just the name ex... 7
 
-PROMOTE_FROM = ['catalog you are promoting from here']
+PROMOTE_FROM = catalog you are promoting from here
 
-PROMOTE_TO = ['catalog you are promoting to here']
+PROMOTE_TO = catalog you are promoting to here
 
 [normal] or whatever name you'd like
 
@@ -37,9 +37,9 @@ APPS = ['Enter Apps Names used in Munki Here', 'Another Here']
 
 TIME = Enter your Days here just the name ex... 7
 
-PROMOTE_FROM = ['catalog you are promoting from here']
+PROMOTE_FROM = catalog you are promoting from here
 
-PROMOTE_TO = ['catalog you are promoting to here']
+PROMOTE_TO = catalog you are promoting to here
 
 Jenkins Config
 --------------
