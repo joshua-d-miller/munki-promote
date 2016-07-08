@@ -108,7 +108,7 @@ def promote_apps(repo, group, config_options):
                     updated_apps.append(list([working_files[1]['name'],
                                               working_files[1]['version']]))
                     # Write the file
-                    # plistlib.writePlist(working_files[1], (working_files[0]))
+                    plistlib.writePlist(working_files[1], (working_files[0]))
                 except StandardError:
                     print("Could not update pkginfo for {0:}"
                           .format(working_files[0]))
