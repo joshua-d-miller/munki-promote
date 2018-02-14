@@ -37,16 +37,16 @@ def main():
     # Parse Configuration file for different catalogs and
     # their applications to promote.
     for promotion_group in conf_parser.sections():
-        if (conf_parser.has_option(promotion_group, 'apps')
-                and conf_parser.has_option(promotion_group, 'time')
-                and conf_parser.has_option(promotion_group, 'promote_from')
-                and conf_parser.has_option(promotion_group, 'promote_to')):
+        if (conf_parser.has_option(promotion_group, 'apps') and
+            conf_parser.has_option(promotion_group, 'time') and
+                conf_parser.has_option(promotion_group, 'promote_from') and
+                conf_parser.has_option(promotion_group, 'promote_to')):
             config_options = dict()
             # Read group name in config file
             # Read applications to move to specified catalog
             config_options[0] = conf_parser.get(promotion_group,
                                                 'apps')
-        	# Read last modified time limit (Days)
+            # Read last modified time limit (Days)
             config_options[1] = int(conf_parser.get(promotion_group,
                                                     'time'))
             # Read the catalog to promote from
@@ -70,7 +70,7 @@ def main():
 def promote_apps(repo, group, config_options):
     '''This function will perform promotions of
     the applications from one group to another'''
-	# Create list to append updated pkginfo/plist apps
+    # Create list to append updated pkginfo/plist apps
     updated_apps = []
     # Working Files will handle or current file
     # timestamp and plist
@@ -84,7 +84,7 @@ def promote_apps(repo, group, config_options):
     # Begin searching through the pkginfo directory
     for os_walker[0], os_walker[1], os_walker[2] in os.walk(repo):
         for os_walker[3] in os_walker[2]:
-        	# Omit hidden files
+            # Omit hidden files
             if os_walker[3].startswith("."):
                 continue
             # Capture Current file
@@ -103,9 +103,9 @@ def promote_apps(repo, group, config_options):
             desired_last_modified_time = now - days_from_config
             # Check if the file has not been modified
             # for time specified in config
-            if (config_options[2] in working_files[1]['catalogs']
-                    and modifytime < desired_last_modified_time
-                    and working_files[1]['name'] in config_options[0]):
+            if (config_options[2] in working_files[1]['catalogs'] and
+                modifytime < desired_last_modified_time and
+                    working_files[1]['name'] in config_options[0]):
                 try:
                     # Update Catalog
                     working_files[1]['catalogs'] = config_options[3]
@@ -149,6 +149,7 @@ def makecatalogs(makecatalogspath, munki_repo):
     except StandardError as error:
         print("Could not update the Munki catalogs.  Please run makecatalogs")
         print(error)
+
 
 if __name__ == '__main__':
     main()
