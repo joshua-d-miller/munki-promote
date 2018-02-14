@@ -33,8 +33,7 @@ def main():
         sys.exit(1)
     # Read Munki Repo location
     munki_repo = conf_parser.get('main', 'REPO')
-    # Append /pkgsinfo as we only need to go through these files
-    munki_repo = '{0:}/pkgsinfo'.format(munki_repo)
+    pkgsinfo = '{0:}/pkgsinfo'.format(munki_repo)
     # Parse Configuration file for different catalogs and
     # their applications to promote.
     for promotion_group in conf_parser.sections():
@@ -57,9 +56,15 @@ def main():
             config_options[3] = [conf_parser.get(promotion_group,
                                                  'promote_to')]
             # Perform promotion of desired applications
-            promote_apps(munki_repo, promotion_group, config_options)
+            promote_apps(pkgsinfo, promotion_group, config_options)
         else:
             continue
+    if conf_parser.has_option('main', 'MAKECATALOGS'):
+        makecatalogspath = conf_parser.get('main', 'MAKECATALOGS')
+    else:
+        print("Using default value for MAKECATALOGS")
+        makecatalogspath = '/usr/local/munki/makecatalogs'
+    makecatalogs(makecatalogspath, munki_repo)
 
 
 def promote_apps(repo, group, config_options):
@@ -130,8 +135,7 @@ def promote_apps(repo, group, config_options):
             print('{0:{space}}{1:}'.format(name, version, space=space))
         print()
 
-
-def makecatalogs():
+def makecatalogs(makecatalogspath, munki_repo):
     '''Performs Munki's makecatalogs
     functiong after all promotions have
     been completed.'''
@@ -139,8 +143,9 @@ def makecatalogs():
         # Update the Munki Catalogs
         print("Updating catalogs....")
         # Suppress the output of makecatalogs
-        subprocess.check_output(['/usr/local/munki/makecatalogs'],
-                                stdout=subprocess.PIPE)
+        subprocess.check_call([makecatalogspath, munki_repo],
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
     except StandardError as error:
         print("Could not update the Munki catalogs.  Please run makecatalogs")
         print(error)
@@ -148,4 +153,3 @@ def makecatalogs():
 
 if __name__ == '__main__':
     main()
-    makecatalogs()
