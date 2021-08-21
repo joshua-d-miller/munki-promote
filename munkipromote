@@ -1,70 +1,104 @@
-#!/usr/bin/python
-'''This script will take items in a Munki catalog
-and place them in the chosen catalog from
-munkipromote.conf.  You can define as many catalogs
-as you would like i.e. testing, production, development'''
-# Joshua D. Miller - josh@psu.edu - June 23, 2016
-# The Pennsylvania State University - College of Education
+#!/usr/local/bin/psupython
+'''
+------------------------
+  Penn State MacAdmins
+------------------------
+Performs the following:
+  - Reads in configuration from JSON file
+  and performs automatic promotion from specified
+  catalog to specified catalog
+ Notes:
+  - Example
+    - Firefox (Testing) to (Production)
+-------------------------------------
+   Joshua D. Miller - josh@psu.edu
+   The Pennsylvania State University
 
+   Last Update: August 20, 2021
+   Python Version Tested: 3.8.0
+-------------------------------------
+'''
 from __future__ import print_function
+import json
 import os
 import plistlib
 import subprocess
 import sys
-from ConfigParser import SafeConfigParser
 from datetime import datetime, timedelta
 
 
 def main():
     '''This function will read in the configuration
-    sections defined in munkipromote.conf'''
+    sections defined in munkipromote.json'''
     # Read Config File
-    # Set Configuration Parser
-    conf_parser = SafeConfigParser({'VERBOSE': 'True'})
     # Determine the path of the script
     script_path = os.path.realpath(os.path.dirname(sys.argv[0]))
     # Set the location of the munkipromote.conf file
-    conf_file = '{0:}/munkipromote.conf'.format(script_path)
+    conf_file = '{0:}/munkipromote.json'.format(script_path)
     # Attempt to read the config file
     try:
-        conf_parser.read(conf_file)
-    except StandardError as error:
+        with open(conf_file, 'rb') as json_config:
+            config = json.load(json_config)
+    except Exception as error:
         print(error)
         sys.exit(1)
     # Read Munki Repo location
-    munki_repo = conf_parser.get('main', 'REPO')
+    munki_repo = config["main"]["REPO"]
     pkgsinfo = '{0:}/pkgsinfo'.format(munki_repo)
+    # Set up notification varaible to output to Teams
+    notification_text = ""
+    # Check that webhook is configured
+    webhook = config["main"]["TEAMS_WEBHOOK"]
+    # Take the current date
+    start_time = datetime.now().strftime('%B %d, %Y %I:%M %p')
     # Parse Configuration file for different catalogs and
     # their applications to promote.
-    for promotion_group in conf_parser.sections():
-        if (conf_parser.has_option(promotion_group, 'apps') and
-            conf_parser.has_option(promotion_group, 'time') and
-                conf_parser.has_option(promotion_group, 'promote_from') and
-                conf_parser.has_option(promotion_group, 'promote_to')):
-            config_options = dict()
-            # Read group name in config file
-            # Read applications to move to specified catalog
-            config_options[0] = conf_parser.get(promotion_group,
-                                                'apps')
-            # Read last modified time limit (Days)
-            config_options[1] = int(conf_parser.get(promotion_group,
-                                                    'time'))
-            # Read the catalog to promote from
-            config_options[2] = conf_parser.get(promotion_group,
-                                                'promote_from')
-            # Read the catalog to promote to
-            config_options[3] = [conf_parser.get(promotion_group,
-                                                 'promote_to')]
-            # Perform promotion of desired applications
-            promote_apps(pkgsinfo, promotion_group, config_options)
-        else:
+    for promotion_group in config["promotions"]:
+        config_options = dict()
+        #### Read applications to move to specified catalog
+        try:
+            config_options[0] = promotion_group['APPS']
+        except:
             continue
-    if conf_parser.has_option('main', 'MAKECATALOGS'):
-        makecatalogspath = conf_parser.get('main', 'MAKECATALOGS')
-    else:
-        print("Using default value for MAKECATALOGS")
+        #### Read last modified time limit (Days)
+        try:
+            config_options[1] = int(promotion_group["TIME"])
+        except:
+            continue
+        #### Read the catalog to promote from
+        try:
+            config_options[2] = promotion_group["PROMOTE_FROM"]
+        except:
+            continue
+        #### Read the catalog to promote to
+        try:
+            config_options[3] = promotion_group["PROMOTE_TO"]
+        except:
+            continue
+        #### Perform promotion of desired applications
+        try:
+            notification_text += promote_apps(
+                pkgsinfo, promotion_group["TITLE"], config_options)
+        except:
+            continue
+    print(notification_text)
+    if webhook:
+        # Build Microsoft Teams Notification
+        promote_teams_notification = {
+            'text' : notification_text,
+            'textformat' : 'markdown',
+            'title': 'Munki-Promote Run - {0:}'.format(start_time)
+        }
+        # Send notification
+        subprocess.check_call(
+            ['/usr/bin/curl', '-H', 'Content-Type: application/json',
+             '-d', json.dumps(promote_teams_notification), webhook],
+            stderr=subprocess.PIPE)
+    makecatalogspath = config["main"]["MAKECATALOGS"]
+    '''if not makecatalogspath:
+        print("Using default location for makecatalogs....")
         makecatalogspath = '/usr/local/munki/makecatalogs'
-    makecatalogs(makecatalogspath, munki_repo)
+    makecatalogs(makecatalogspath, munki_repo)'''
 
 
 def promote_apps(repo, group, config_options):
@@ -88,11 +122,12 @@ def promote_apps(repo, group, config_options):
             if os_walker[3].startswith("."):
                 continue
             # Capture Current file
-            working_files[0] = os.path.join(os_walker[0], os_walker[3])
+            working_file = os.path.join(os_walker[0], os_walker[3])
             # Read PLIST file
-            working_files[1] = plistlib.readPlist(working_files[0])
+            with open(working_file, 'rb') as pl:
+                work_plist = plistlib.load(pl)
             # Get last modified time of the file
-            getmtime = os.path.getmtime(working_files[0])
+            getmtime = os.path.getmtime(working_file)
             modifytime = datetime.fromtimestamp(getmtime)
             # Get current time of script run
             now = datetime.now()
@@ -103,50 +138,65 @@ def promote_apps(repo, group, config_options):
             desired_last_modified_time = now - days_from_config
             # Check if the file has not been modified
             # for time specified in config
-            if (config_options[2] in working_files[1]['catalogs'] and
+            if (config_options[2] in work_plist['catalogs'] and
                 modifytime < desired_last_modified_time and
-                    working_files[1]['name'] in config_options[0]):
+                    work_plist['name'] in config_options[0]):
                 try:
                     # Update Catalog
-                    working_files[1]['catalogs'] = config_options[3]
+                    work_plist['catalogs'] = [config_options[3]]
                     # Add to list of updated applications
-                    updated_apps.append(list([working_files[1]['name'],
-                                              working_files[1]['version']]))
+                    updated_apps.append(list([work_plist['name'],
+                                              work_plist['version']]))
                     # Write the file
-                    plistlib.writePlist(working_files[1], (working_files[0]))
-                except StandardError:
+                    with open(working_file, 'wb') as plist_to_write:
+                        plistlib.dump(work_plist, plist_to_write)
+                except Exception as error:
+                    print(error)
                     print("Could not update pkginfo for {0:}"
                           .format(working_files[0]))
                     continue
     # Print output of changes made
+    prepare_notification_text = ""
     if not updated_apps:
         print("No items defined in {0:} were promoted to the {1:} "
               "catalog from the {2:} catalog..."
-              .format(group, config_options[3][0], config_options[2]))
+              .format(group, config_options[3], config_options[2]))
+        prepare_notification_text += (
+            "No items defined in {0:} were promoted to the {1:} "
+            "catalog from the {2:} catalog...   \n"
+            .format(group, config_options[3], config_options[2]))
     else:
         # Print the applications that were updated for each catalog
         print("The following items defined in {0:} were promoted "
               "to the {1:} catalog from the {2:} catalog... \n"
-              .format(group, config_options[3][0], config_options[2]))
+              .format(group, config_options[3], config_options[2]))
+        prepare_notification_text += (
+            "The following items defined in {0:} were promoted "
+            "to the {1:} catalog from the {2:} catalog...   \n"
+            .format(group, config_options[3], config_options[2]))
         space = 50
         print("{0:{space}}{1:}\n{2:{space}}{3:}"
               .format("Name", "Version", "----", "-------", space=space))
         for name, version in updated_apps:
-            print('{0:{space}}{1:}'.format(name, version, space=space))
+            print("{0:{space}}{1:}".format(name, version, space=space))
+            prepare_notification_text += (" • {0:} - {1:}   \n".format(
+                name, version))
         print()
 
+    return prepare_notification_text
+
 def makecatalogs(makecatalogspath, munki_repo):
-    '''Performs Munki's makecatalogs
-    functiong after all promotions have
+    '''Performs Munki makecatalogs
+    function after all promotions have
     been completed.'''
     try:
         # Update the Munki Catalogs
         print("Updating catalogs....")
         # Suppress the output of makecatalogs
-        subprocess.check_call([makecatalogspath, munki_repo],
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE)
-    except StandardError as error:
+        subprocess.check_output(
+            [makecatalogspath, munki_repo],stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+    except Exception as error:
         print("Could not update the Munki catalogs.  Please run makecatalogs")
         print(error)
 

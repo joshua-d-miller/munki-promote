@@ -1,0 +1,16 @@
+{
+  "main": {
+    "REPO" : "/Volumes/munki/repo",
+    "MAKECATALOGS" : null,
+    "TEAMS_WEBHOOK" : ""
+  },
+  "promotions": [
+    {
+      "TITLE" : "Critical",
+      "APPS" : ["Google Chrome, Firefox"],
+      "TIME" : 2,
+      "PROMOTE_FROM" : "testing",
+      "PROMOTE_TO" : "production"
+    }
+  ]
+}
