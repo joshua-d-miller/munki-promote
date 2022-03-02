@@ -16,7 +16,7 @@ Setup
 -----
 
 Copy the munkipromotetemplate.json as munkipromote.json and configure the variables:
-
+```
 {
   "main": {
     "REPO" : "/Volumes/munki/repo", <-- Your Munki Repo Location Here
@@ -33,6 +33,7 @@ Copy the munkipromotetemplate.json as munkipromote.json and configure the variab
     }
   ]
 }
+```
 
 Jenkins Config
 --------------
